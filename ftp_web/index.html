@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <title>Web FTP 浏览器</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 900px; margin: 20px auto; }
+        h2 { text-align: center; }
+        #uploadSection {
+            margin-bottom: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            background: #f9f9f9;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+            word-wrap: break-word;
+        }
+        th {
+            background-color: #f2f2f2;
+            user-select: none;
+        }
+        tr:hover { background-color: #e6f7ff; }
+        a {
+            color: #007acc;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        button {
+            padding: 4px 8px;
+            font-size: 0.9em;
+            cursor: pointer;
+            border: 1px solid #d9534f;
+            background: #d9534f;
+            color: white;
+            border-radius: 3px;
+        }
+        button:hover {
+            background: #c9302c;
+            border-color: #ac2925;
+        }
+        #backBtn {
+            margin-bottom: 10px;
+            cursor: pointer;
+            color: #007acc;
+            display: inline-block;
+            font-weight: bold;
+        }
+        #backBtn:hover {
+            text-decoration: underline;
+        }
+        #logoutBtn {
+            margin-top: 20px;
+            padding: 4px 8px;
+            background: #5bc0de;
+            color: white;
+            border: 1px solid #46b8da;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        #logoutBtn:hover {
+            background: #31b0d5;
+        }
+    </style>
+</head>
+<body>
+
+<h2>Web FTP 文件浏览器</h2>
+
+<div id="uploadSection">
+    <form id="uploadForm">
+        <input type="file" id="uploadFile" />
+        <button type="submit">上传文件</button>
+    </form>
+</div>
+
+<div>
+    <span id="backBtn" style="display:none;">⬅️ 返回上级目录</span>
+    <button id="logoutBtn" style="display:none;" onclick="logout()">退出登录</button>
+</div>
+
+<table>
+    <thead>
+        <tr>
+            <th style="width:40%">文件名</th>
+            <th style="width:15%">类型</th>
+            <th style="width:15%">大小</th>
+            <th style="width:25%">修改时间</th>
+            <th style="width:15%">操作</th>
+        </tr>
+    </thead>
+    <tbody id="filelist">
+        <tr><td colspan="5" style="text-align:center;">正在加载...</td></tr>
+    </tbody>
+</table>
+
+<script>
+    let username = localStorage.getItem("ftp_user") || "";
+    let password = localStorage.getItem("ftp_passwd") || "";
+    let currentPath = ".";
+
+    document.getElementById("backBtn").onclick = () => {
+        if(currentPath === ".") return;
+        let parts = currentPath.split("/");
+        parts.pop();
+        currentPath = parts.length > 0 ? parts.join("/") : ".";
+        loadDirectory(currentPath);
+    };
+
+    async function loadDirectory(path = ".") {
+        currentPath = path;
+
+        if (!username || !password) {
+            username = prompt("请输入FTP用户名");
+            password = prompt("请输入FTP密码");
+            if (!username || !password) {
+                alert("必须输入用户名和密码！");
+                return;
+            }
+            localStorage.setItem("ftp_user", username);
+            localStorage.setItem("ftp_passwd", password);
+        }
+
+        // 控制返回按钮和退出按钮显示
+        document.getElementById("backBtn").style.display = (currentPath !== ".") ? "inline-block" : "none";
+        document.getElementById("logoutBtn").style.display = "inline-block";
+
+        const res = await fetch("/list", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ user: username, passwd: password, path: currentPath })
+        });
+        const data = await res.json();
+
+        const tbody = document.getElementById("filelist");
+        tbody.innerHTML = "";
+
+        if (data.files && data.files.length > 0) {
+            // 请求文件详情
+            data.files.forEach(item => {
+                const tr = document.createElement("tr");
+
+                // 文件名（目录点击进入，文件点击下载）
+                const nameTd = document.createElement("td");
+                if (item.type === "dir") {
+                    nameTd.innerHTML = `<a href="#">📂 ${item.name}</a>`;
+                    nameTd.style.fontWeight = "bold";
+                    nameTd.style.color = "#2a76d2";
+                    nameTd.style.cursor = "pointer";
+                    nameTd.onclick = (e) => {
+                        e.preventDefault();
+                        const newPath = (currentPath === ".") ? item.name : currentPath + "/" + item.name;
+                        loadDirectory(newPath);
+                    };
+                } else {
+                    nameTd.innerHTML = `<a href="/download?user=${encodeURIComponent(username)}&passwd=${encodeURIComponent(password)}&path=${encodeURIComponent(currentPath)}&file=${encodeURIComponent(item.name)}" target="_blank">📄 ${item.name}</a>`;
+                }
+                tr.appendChild(nameTd);
+
+                // 类型
+                const typeTd = document.createElement("td");
+                typeTd.textContent = item.type === "dir" ? "目录" : "文件";
+                tr.appendChild(typeTd);
+
+                // 大小
+                const sizeTd = document.createElement("td");
+                sizeTd.textContent = item.size !== undefined ? formatSize(item.size) : "—";
+                tr.appendChild(sizeTd);
+
+                // 修改时间
+                const timeTd = document.createElement("td");
+                timeTd.textContent = item.modify || "—";
+                tr.appendChild(timeTd);
+
+                // 操作
+                const opTd = document.createElement("td");
+                if (item.type === "file") {
+                    const delBtn = document.createElement("button");
+                    delBtn.textContent = "删除";
+                    delBtn.onclick = async (e) => {
+                        e.stopPropagation();
+                        if (confirm(`确定删除文件 "${item.name}" 吗？`)) {
+                            const res = await fetch("/delete", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ user: username, passwd: password, path: currentPath, file: item.name })
+                            });
+                            const resp = await res.json();
+                            if (resp.success) {
+                                alert("删除成功");
+                                loadDirectory(currentPath);
+                            } else {
+                                alert("删除失败: " + resp.error);
+                            }
+                        }
+                    };
+                    opTd.appendChild(delBtn);
+                } else {
+                    opTd.textContent = "—";
+                }
+                tr.appendChild(opTd);
+
+                tbody.appendChild(tr);
+            });
+        } else {
+            tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#999;">空目录或无权限查看</td></tr>`;
+        }
+    }
+
+    function formatSize(bytes) {
+        if (bytes === 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return (bytes / Math.pow(k, i)).toFixed(2) + ' ' + sizes[i];
+    }
+
+    // 上传
+    document.getElementById("uploadForm").onsubmit = async function(e) {
+        e.preventDefault();
+        const fileInput = document.getElementById("uploadFile");
+        if (!fileInput.files.length) {
+            alert("请选择文件");
+            return;
+        }
+        if (!username || !password) {
+            username = prompt("请输入FTP用户名");
+            password = prompt("请输入FTP密码");
+            if (!username || !password) return alert("用户名和密码必填");
+            localStorage.setItem("ftp_user", username);
+            localStorage.setItem("ftp_passwd", password);
+        }
+
+        const file = fileInput.files[0];
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("user", username);
+        formData.append("passwd", password);
+        formData.append("path", currentPath);
+
+        const res = await fetch("/upload", { method: "POST", body: formData });
+        const data = await res.json();
+
+        if (data.success) {
+            alert("上传成功");
+            loadDirectory(currentPath);
+        } else {
+            alert("上传失败: " + data.error);
+        }
+    };
+
+    function logout() {
+        localStorage.removeItem("ftp_user");
+        localStorage.removeItem("ftp_passwd");
+        alert("已退出登录");
+        loadDirectory();
+    }
+
+    loadDirectory();
+</script>
+
+</body>
+</html>
