@@ -35,6 +35,7 @@
 #define CMD_PORT "PORT"
 #define CMD_PASV "PASV"
 #define CMD_TYPE "TYPE"
+#define CMD_DELE "DELE"
 
 // ---------------------
 // FTP 用户名和密码
@@ -103,7 +104,8 @@ int parse_command(const char *input, FTPCommand *cmd) {
         strcmp(cmd->cmd, CMD_LIST) == 0 || strcmp(cmd->cmd, CMD_PWD) == 0 ||
         strcmp(cmd->cmd, CMD_CWD) == 0 || strcmp(cmd->cmd, CMD_CDUP) == 0 ||
         strcmp(cmd->cmd, CMD_PORT) == 0 || strcmp(cmd->cmd, CMD_PASV) == 0 ||
-        strcmp(cmd->cmd, CMD_TYPE) == 0 || strcmp(cmd->cmd, CMD_QUIT) == 0) {
+        strcmp(cmd->cmd, CMD_DELE) == 0 || strcmp(cmd->cmd, CMD_TYPE) == 0 || 
+        strcmp(cmd->cmd, CMD_QUIT) == 0) {
         return 0;  // 成功解析
     }
 

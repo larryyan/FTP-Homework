@@ -331,6 +331,17 @@ void handle_client(FTPClient *client) {
             client->data_sock = -1;   // 重置数据连接
             // 关闭数据连接
             send_response(client->client_sock, "File upload complete", 226);
+        } else if (strcmp(cmd.cmd, "DELE") == 0) {
+            if (!client->logged_in) {
+                send_response(client->client_sock, "Please login first", 530);
+                continue;
+            }
+
+            if (remove(cmd.arg) == 0) {
+                send_response(client->client_sock, "File deleted successfully", 250);
+            } else {
+                send_response(client->client_sock, "Failed to delete file", 550);
+            }
         } else if (strcmp(cmd.cmd, "QUIT") == 0) {
             send_response(client->client_sock, "Goodbye", 221);
             break;
