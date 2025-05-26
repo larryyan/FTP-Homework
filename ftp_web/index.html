@@ -7,8 +7,8 @@
         body { font-family: Arial, sans-serif; max-width: 900px; margin: 20px auto; }
         .header-container { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
         h2 { margin: 0; }
-        .action-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        #uploadSection { padding: 6px; border: 1px solid #ccc; border-radius: 6px; background: #f9f9f9; }
+        .action-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 10px; }
+        #uploadSection, #newFolderSection { padding: 6px; border: 1px solid #ccc; border-radius: 6px; background: #f9f9f9; }
         #reloadBtn { padding: 6px 12px; font-size: 0.9em; cursor: pointer; border: 1px solid #5cb85c; background: #5cb85c; color: white; border-radius: 3px; }
         #reloadBtn:hover { background: #4cae4c; border-color: #449d44; }
         table { width: 100%; border-collapse: collapse; table-layout: fixed; }
@@ -23,6 +23,20 @@
         #backBtn:hover { text-decoration: underline; }
         #logoutBtn { padding: 4px 8px; background: #5bc0de; color: white; border: 1px solid #46b8da; border-radius: 3px; cursor: pointer; }
         #logoutBtn:hover { background: #31b0d5; }
+        .green-btn {
+            padding: 4px 12px;
+            font-size: 0.9em;
+            cursor: pointer;
+            border: 1px solid #5cb85c;
+            background: #5cb85c;
+            color: white;
+            border-radius: 3px;
+            transition: background 0.2s, border-color 0.2s;
+        }
+        .green-btn:hover {
+            background: #4cae4c;
+            border-color: #449d44;
+        }
     </style>
 </head>
 <body>
@@ -33,10 +47,22 @@
 </div>
 
 <div class="action-bar">
-    <div id="uploadSection">
-        <form id="uploadForm">
-            <input type="file" id="uploadFile" />
-            <button type="submit">上传</button>
+    <div id="uploadSection" style="display: flex; flex-direction: row; gap: 16px; align-items: center; padding: 0; border: none; background: none;">
+        <!-- 上传文件 -->
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <input type="file" id="uploadFile" style="display:none;" />
+            <button type="button" class="green-btn" id="uploadFileBtn">上传文件</button>
+        </div>
+        <!-- 上传文件夹 -->
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <input type="file" id="uploadFolder" webkitdirectory directory multiple style="display:none;" />
+            <button type="button" class="green-btn" id="uploadFolderBtn">上传文件夹</button>
+        </div>
+    </div>
+    <div id="newFolderSection">
+        <form id="newFolderForm" style="display: flex; align-items: center; gap: 8px;">
+            <input type="text" id="newFolderName" placeholder="新建文件夹名" autocomplete="off" />
+            <button type="submit" class="green-btn">新建文件夹</button>
         </form>
     </div>
     <button id="reloadBtn" onclick="reloadDirectory()">刷新</button>
@@ -59,32 +85,49 @@
 </table>
 
 <script>
-    const urlParams = new URLSearchParams(window.location.search);
-    let currentPath = urlParams.get("path") || ".";
+    let currentPath = ".";
     let username = localStorage.getItem("ftp_user") || "";
     let password = localStorage.getItem("ftp_passwd") || "";
 
     document.getElementById("backBtn").onclick = () => {
-        if (currentPath === ".") return;
-        const parts = currentPath.split("/");
+        if (currentPath === "." || currentPath === "") return;
+        const parts = currentPath.split("/").filter(p => p && p !== "." && p !== "..");
         parts.pop();
         const newPath = parts.length ? parts.join("/") : ".";
-        window.location.search = `?path=${encodeURIComponent(newPath)}`;
+        navigateTo(newPath);
     };
 
     function reloadDirectory() {
-        window.location.reload();
+        loadDirectory(currentPath);
+    }
+
+    function navigateTo(path) {
+        currentPath = normalizePath(path);
+        loadDirectory(currentPath);
+        history.pushState({}, "", window.location.pathname);
+    }
+
+    function normalizePath(path) {
+        const segments = [];
+        path.split("/").forEach(seg => {
+            if (seg === "..") segments.pop();
+            else if (seg !== "." && seg !== "") segments.push(seg);
+        });
+        return segments.length ? segments.join("/") : ".";
     }
 
     async function loadDirectory(path = ".") {
-        currentPath = path;
+        currentPath = normalizePath(path);
         document.getElementById("backBtn").style.display = (currentPath !== ".") ? "inline-block" : "none";
         document.getElementById("logoutBtn").style.display = "inline-block";
 
         if (!username || !password) {
             username = prompt("请输入FTP用户名");
             password = prompt("请输入FTP密码");
-            if (!username || !password) { alert("必须输入用户名和密码！"); return; }
+            if (!username || !password) {
+                alert("必须输入用户名和密码！");
+                return;
+            }
             localStorage.setItem("ftp_user", username);
             localStorage.setItem("ftp_passwd", password);
         }
@@ -104,13 +147,12 @@
         if (files.length) {
             files.forEach(item => {
                 const tr = document.createElement("tr");
+
                 const nameTd = document.createElement("td");
-                if (item.type === "dir") {
-                    const hrefPath = (currentPath === ".") ? item.name : `${currentPath}/${item.name}`;
-                    nameTd.innerHTML = `<a href="?path=${encodeURIComponent(hrefPath)}">📂 ${item.name}</a>`;
-                } else {
-                    nameTd.innerHTML = `<a href="/download?user=${encodeURIComponent(username)}&passwd=${encodeURIComponent(password)}&path=${encodeURIComponent(currentPath)}&file=${encodeURIComponent(item.name)}" target="_blank">📄 ${item.name}</a>`;
-                }
+                const hrefPath = (currentPath === "." ? item.name : `${currentPath}/${item.name}`);
+                nameTd.innerHTML = item.type === "dir"
+                    ? `<a href="#" onclick="navigateTo('${hrefPath}')">📂 ${item.name}</a>`
+                    : `<a href="/download?user=${encodeURIComponent(username)}&passwd=${encodeURIComponent(password)}&path=${encodeURIComponent(currentPath)}&file=${encodeURIComponent(item.name)}" target="_blank">📄 ${item.name}</a>`;
                 tr.appendChild(nameTd);
 
                 const sizeTd = document.createElement("td");
@@ -122,40 +164,121 @@
                 tr.appendChild(timeTd);
 
                 const opTd = document.createElement("td");
-                if (item.type === "file") {
-                    const delBtn = document.createElement("button");
-                    delBtn.textContent = "删除";
-                    delBtn.onclick = async e => {
-                        e.stopPropagation(); if (!confirm(`确定删除文件 \"${item.name}\" 吗？`)) return;
-                        const resp = await fetch(`/delete`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ user: username, passwd: password, path: currentPath, file: item.name }) });
-                        const result = await resp.json(); if (result.success) { alert("删除成功"); loadDirectory(currentPath);} else { alert("删除失败: " + result.error); }
-                    };
-                    opTd.appendChild(delBtn);
-                } else { opTd.textContent = "—"; }
+                const delBtn = document.createElement("button");
+                delBtn.textContent = "删除";
+                delBtn.onclick = async e => {
+                    e.stopPropagation();
+                    if (!confirm(`确定删除 ${item.type === "dir" ? "文件夹" : "文件"} "${item.name}" 吗？`)) return;
+                    const resp = await fetch(`/delete`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            user: username,
+                            passwd: password,
+                            path: currentPath,
+                            file: item.name
+                        })
+                    });
+                    const result = await resp.json();
+                    if (result.success) {
+                        alert("删除成功");
+                        loadDirectory(currentPath);
+                    } else {
+                        alert("删除失败: " + result.error);
+                    }
+                };
+                opTd.appendChild(delBtn);
                 tr.appendChild(opTd);
+
                 tbody.appendChild(tr);
             });
         } else {
-            tbody.innerHTML = `<tr><td colspan=\"4\" style=\"text-align:center; color:#999;\">空目录或无权限查看</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#999;">空目录或无权限查看</td></tr>`;
         }
     }
 
     function formatSize(bytes) {
         if (bytes === 0) return '0 B';
-        const k = 1024; const sizes = ['B', 'KB', 'MB', 'GB', 'TB']; const i = Math.floor(Math.log(bytes) / Math.log(k));
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
         return (bytes / Math.pow(k, i)).toFixed(2) + ' ' + sizes[i];
     }
 
-    document.getElementById("uploadForm").onsubmit = async function(e) {
-        e.preventDefault(); const fileInput = document.getElementById("uploadFile"); if (!fileInput.files.length) return alert("请选择文件");
-        const file = fileInput.files[0]; const formData = new FormData(); formData.append("file", file);
-        formData.append("user", username); formData.append("passwd", password); formData.append("path", currentPath);
-        const res = await fetch("/upload", { method: "POST", body: formData }); const data = await res.json();
-        if (data.success) { alert("上传成功"); loadDirectory(currentPath);} else { alert("上传失败: " + data.error); }
+    // 文件上传按钮
+    document.getElementById("uploadFileBtn").onclick = function() {
+        document.getElementById("uploadFile").click();
+    };
+    document.getElementById("uploadFile").onchange = async function() {
+        const fileInput = this;
+        if (!fileInput.files.length) return;
+        const file = fileInput.files[0];
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("user", username);
+        formData.append("passwd", password);
+        formData.append("path", currentPath);
+        formData.append("filename", file.name);
+
+        const res = await fetch("/uploadFile", { method: "POST", body: formData });
+        const data = await res.json();
+        if (!data.success) alert(`上传 ${file.name} 失败: ${data.error}`);
+        else alert("上传完成");
+        fileInput.value = ""; // 重置
+        loadDirectory(currentPath);
+    };
+
+    document.getElementById("uploadFolderBtn").onclick = function() {
+        document.getElementById("uploadFolder").click();
+    };
+    document.getElementById("uploadFolder").onchange = async function() {
+        const fileInput = this;
+        if (!fileInput.files.length) return;
+    
+        const formData = new FormData();
+        formData.append("user", username);
+        formData.append("passwd", password);
+        formData.append("path", currentPath);
+    
+        for (const file of fileInput.files) {
+            // 保留相对路径
+            formData.append("files", file, file.webkitRelativePath || file.name);
+        }
+    
+        const res = await fetch("/uploadFolder", { method: "POST", body: formData });
+        const data = await res.json();
+        if (data.success) {
+            alert("文件夹上传完成");
+        } else {
+            alert("上传失败: " + (data.error || "未知错误"));
+        }
+        fileInput.value = "";
+        loadDirectory(currentPath);
+    };
+
+    document.getElementById("newFolderForm").onsubmit = async function(e) {
+        e.preventDefault();
+        const folderName = document.getElementById("newFolderName").value.trim();
+        if (!folderName) return alert("请输入文件夹名称");
+        const res = await fetch("/mkdir", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ user: username, passwd: password, path: currentPath, name: folderName })
+        });
+        const result = await res.json();
+        if (result.success) {
+            alert("文件夹创建成功");
+            loadDirectory(currentPath);
+        } else {
+            alert("创建失败: " + result.error);
+        }
     };
 
     function logout() {
-        localStorage.removeItem("ftp_user"); localStorage.removeItem("ftp_passwd"); alert("已退出登录"); window.location.search = "";
+        localStorage.removeItem("ftp_user");
+        localStorage.removeItem("ftp_passwd");
+        alert("已退出登录");
+        window.location.reload();
     }
 
     loadDirectory(currentPath);

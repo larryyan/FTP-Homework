@@ -28,8 +28,10 @@
 #define CMD_RETR "RETR"
 #define CMD_STOR "STOR"
 #define CMD_LIST "LIST"
-#define CMD_CWD "CWD"
 #define CMD_CDUP "CDUP"
+#define CMD_MKD "MKD"
+#define CMD_RMD "RMD"
+#define CMD_CWD "CWD"
 #define CMD_PWD "PWD"
 #define CMD_QUIT "QUIT"
 #define CMD_PORT "PORT"
@@ -102,6 +104,7 @@ int parse_command(const char *input, FTPCommand *cmd) {
     if (strcmp(cmd->cmd, CMD_USER) == 0 || strcmp(cmd->cmd, CMD_PASS) == 0 ||
         strcmp(cmd->cmd, CMD_RETR) == 0 || strcmp(cmd->cmd, CMD_STOR) == 0 ||
         strcmp(cmd->cmd, CMD_LIST) == 0 || strcmp(cmd->cmd, CMD_PWD) == 0 ||
+        strcmp(cmd->cmd, CMD_MKD) == 0 || strcmp(cmd->cmd, CMD_RMD) == 0 ||
         strcmp(cmd->cmd, CMD_CWD) == 0 || strcmp(cmd->cmd, CMD_CDUP) == 0 ||
         strcmp(cmd->cmd, CMD_PORT) == 0 || strcmp(cmd->cmd, CMD_PASV) == 0 ||
         strcmp(cmd->cmd, CMD_DELE) == 0 || strcmp(cmd->cmd, CMD_TYPE) == 0 || 

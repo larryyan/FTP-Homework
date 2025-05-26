@@ -210,6 +210,33 @@ void handle_client(FTPClient *client) {
                 send_response(client->client_sock, "Directory change failed", 550);
             }
 
+        }else if (strcmp(cmd.cmd, "MKD") == 0) {
+            if (!client->logged_in) {
+                send_response(client->client_sock, "Please login first", 530);
+                continue;
+            }
+
+            if (mkdir(cmd.arg, 0755) == 0) {
+                char response_msg[BUFFER_SIZE];
+                char abs_path[MAX_PATH_LEN];
+                realpath(cmd.arg, abs_path);
+                snprintf(response_msg, sizeof(response_msg), "\"%s\" directory created", abs_path);
+                send_response(client->client_sock, response_msg, 257);
+            } else {
+                send_response(client->client_sock, "Create directory failed", 550);
+            }
+
+        } else if (strcmp(cmd.cmd, "RMD") == 0) {
+            if (!client->logged_in) {
+                send_response(client->client_sock, "Please login first", 530);
+                continue;
+            }
+
+            if (rmdir(cmd.arg) == 0) {
+                send_response(client->client_sock, "Directory removed", 250);
+            } else {
+                send_response(client->client_sock, "Remove directory failed", 550);
+            }
         } else if (strcmp(cmd.cmd, "CDUP") == 0) {
             if (!client->logged_in) {
                 send_response(client->client_sock, "Please login first", 530);
