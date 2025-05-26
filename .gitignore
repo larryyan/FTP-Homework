@@ -1,6 +1,6 @@
 /.vscode/
-/dir1/
-/dir2/
-ftp_client
-ftp_server
+/C_ftp/dir1/
+/C_ftp/dir2/
+/C_ftp/ftp_client
+/C_ftp/ftp_server
 /ftp_web/downloads/
