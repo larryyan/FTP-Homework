@@ -8,6 +8,8 @@
 #include <arpa/inet.h>
 #include <ifaddrs.h>
 #include <net/if.h>
+#include <termios.h>
+
 #include "ftp_common.h"
 
 char server_ip[16];
@@ -183,7 +185,23 @@ void login(int sockfd, const char *username) {
             char password[BUFFER_SIZE/2];
             printf("请输入密码: ");
             fflush(stdout);
-            if (!fgets(password, sizeof(password), stdin)) return;
+            // 关闭回显
+            struct termios oldt, newt;
+            tcgetattr(STDIN_FILENO, &oldt);
+            newt = oldt;
+            newt.c_lflag &= ~ECHO;
+            tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+
+            if (!fgets(password, sizeof(password), stdin)) {
+                // 恢复回显
+                tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+                return;
+            }
+
+            // 恢复回显
+            tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+            printf("\n");
+
             trim_newline(password);
 
             // 发送PASS命令

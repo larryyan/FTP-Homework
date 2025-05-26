@@ -40,12 +40,6 @@
 #define CMD_DELE "DELE"
 
 // ---------------------
-// FTP 用户名和密码
-// ---------------------
-#define FTP_USERNAME "user"
-#define FTP_PASSWORD "password"
-
-// ---------------------
 // 命令结构体（可选）
 // ---------------------
 typedef struct {

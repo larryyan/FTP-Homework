@@ -115,7 +115,7 @@
         currentPath = normalizePath(path);
         document.getElementById("backBtn").style.display = (currentPath !== ".") ? "inline-block" : "none";
         document.getElementById("logoutBtn").style.display = "inline-block";
-
+                
         if (!username || !password) {
             username = prompt("请输入FTP用户名");
             password = prompt("请输入FTP密码");
@@ -126,19 +126,36 @@
             localStorage.setItem("ftp_user", username);
             localStorage.setItem("ftp_passwd", password);
         }
-
+    
+        // 请求目录
         const res = await fetch(`/list`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ user: username, passwd: password, path: currentPath })
         });
         const data = await res.json();
-
+    
+        // 检查无权限，立即弹出登录
+        if (data.error && (data.error.includes("无权限") || data.error.includes("认证") || data.error.includes("密码") || data.error.includes("未登录"))) {
+            localStorage.removeItem("ftp_user");
+            localStorage.removeItem("ftp_passwd");
+            username = prompt("无权限或未登录，请输入FTP用户名");
+            password = prompt("请输入FTP密码");
+            if (!username || !password) {
+                alert("必须输入用户名和密码！");
+                return;
+            }
+            localStorage.setItem("ftp_user", username);
+            localStorage.setItem("ftp_passwd", password);
+            // 重新请求
+            return loadDirectory(currentPath);
+        }
+    
         const tbody = document.getElementById("filelist");
         tbody.innerHTML = "";
-
+    
         const files = (data.files || []).filter(item => item.name !== "." && item.name !== "..");
-
+    
         if (files.length) {
             files.forEach(item => {
                 const tr = document.createElement("tr");

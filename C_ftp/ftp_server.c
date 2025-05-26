@@ -36,7 +36,26 @@ void send_response(int client_sock, const char *message, int code) {
 
 // 登录验证
 void authenticate(FTPClient *client, const char *username, const char *password) {
-    if (strcmp(username, FTP_USERNAME) == 0 && strcmp(password, FTP_PASSWORD) == 0) {
+    FILE *file = fopen("users.txt", "r");
+    if (file == NULL) {
+        send_response(client->client_sock, "Unable to open user database", 550);
+        return;
+    }
+
+    char stored_username[MAX_PATH_LEN], stored_password[MAX_PATH_LEN];
+    int found = 0;
+
+    // 遍历文件中的每一行
+    while (fscanf(file, "%s %s", stored_username, stored_password) != EOF) {
+        if (strcmp(username, stored_username) == 0 && strcmp(password, stored_password) == 0) {
+            found = 1;
+            break;
+        }
+    }
+
+    fclose(file);
+
+    if (found) {
         client->logged_in = 1;
         send_response(client->client_sock, "Login successful", 230);
     } else {

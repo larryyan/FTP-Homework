@@ -19,6 +19,27 @@ make
 
 - Afterwards you'll see two programs, ftp_server and ftp_client. 
 
+### Install iconv
+
+#### Ubuntu/Debian
+
+  ```bash
+  sudo apt-get install libc-bin
+  ```
+
+
+#### CentOS/RHEL
+
+  ```bash
+  sudo yum install glibc-common
+  ```
+
+#### MacOS
+
+  ```bash
+  brew install libiconv
+  ```
+
 ### Install required Python packages
 
 #### Ubuntu / Debian
