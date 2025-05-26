@@ -130,31 +130,6 @@ class FTPHandler(SimpleHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps({"success": False, "error": str(e)}).encode())
         
-        elif self.path == "/uploadFolder":
-            length = int(self.headers.get('Content-Length'))
-            data = json.loads(self.rfile.read(length).decode())
-            user, passwd = data.get("user"), data.get("passwd")
-            path = data.get("path", ".")
-            dirname = data.get("name")
-
-            try:
-                ftp = FTP()
-                ftp.connect(FTP_HOST, FTP_PORT)
-                ftp.login(user, passwd)
-                ftp.cwd(path)
-                ftp.mkd(dirname)
-                ftp.quit()
-
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json")
-                self.end_headers()
-                self.wfile.write(json.dumps({"success": True}).encode())
-            except Exception as e:
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json")
-                self.end_headers()
-                self.wfile.write(json.dumps({"success": False, "error": str(e)}).encode())
-        
         elif self.path == "/delete":
             length = int(self.headers.get('Content-Length'))
             data = json.loads(self.rfile.read(length).decode())

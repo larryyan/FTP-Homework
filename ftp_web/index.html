@@ -53,11 +53,6 @@
             <input type="file" id="uploadFile" style="display:none;" />
             <button type="button" class="green-btn" id="uploadFileBtn">上传文件</button>
         </div>
-        <!-- 上传文件夹 -->
-        <div style="display: flex; align-items: center; gap: 8px;">
-            <input type="file" id="uploadFolder" webkitdirectory directory multiple style="display:none;" />
-            <button type="button" class="green-btn" id="uploadFolderBtn">上传文件夹</button>
-        </div>
     </div>
     <div id="newFolderSection">
         <form id="newFolderForm" style="display: flex; align-items: center; gap: 8px;">
@@ -225,34 +220,6 @@
         if (!data.success) alert(`上传 ${file.name} 失败: ${data.error}`);
         else alert("上传完成");
         fileInput.value = ""; // 重置
-        loadDirectory(currentPath);
-    };
-
-    document.getElementById("uploadFolderBtn").onclick = function() {
-        document.getElementById("uploadFolder").click();
-    };
-    document.getElementById("uploadFolder").onchange = async function() {
-        const fileInput = this;
-        if (!fileInput.files.length) return;
-    
-        const formData = new FormData();
-        formData.append("user", username);
-        formData.append("passwd", password);
-        formData.append("path", currentPath);
-    
-        for (const file of fileInput.files) {
-            // 保留相对路径
-            formData.append("files", file, file.webkitRelativePath || file.name);
-        }
-    
-        const res = await fetch("/uploadFolder", { method: "POST", body: formData });
-        const data = await res.json();
-        if (data.success) {
-            alert("文件夹上传完成");
-        } else {
-            alert("上传失败: " + (data.error || "未知错误"));
-        }
-        fileInput.value = "";
         loadDirectory(currentPath);
     };
 
