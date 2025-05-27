@@ -6,20 +6,20 @@
   - FTP server Implemented in C Language
   - FTP client implemented in C language
   - A web-based FTP file browser implemented in Python language
+  - A socket based web crawler in C language
   
 - Both FTP server & client should be run on a Linux operating system.
 
 ## Preparation
 
-### Compile C server and client
+### Compile C server, client and the crawler
 
 ```bash
 make
 ```
 
-- Afterwards you'll see two programs, ftp_server and ftp_client. 
-
 ### Install iconv
+
 
 #### Ubuntu/Debian
 
@@ -61,6 +61,7 @@ sudo pacman -S python-cgi
 ### FTP Server
 
 ```bash
+cd C_ftp
 ./ftp_server
 ```
 
@@ -74,5 +75,12 @@ sudo pacman -S python-cgi
 
 ```bash
 python3 ftp_web/ftp_client_web.py
+```
+
+#### Socket based web crawler
+
+```bash
+cd crawler
+./crawler
 ```
 

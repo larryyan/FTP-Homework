@@ -1,2 +1,2 @@
 crawler: crawler.c
-	gcc -o crawler crawler.c -lssl -lcrypto -lz -liconv
+	gcc crawler.c -o crawler -lssl -lcrypto

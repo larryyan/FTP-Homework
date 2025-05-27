@@ -1,30 +1,31 @@
+// 基于Socket+OpenSSL的简易HTTPS网络爬虫（抓取文本和图片，保存到download文件夹）
+// 编译：gcc -o crawler_https crawler_https.c -lssl -lcrypto
+// 运行：./crawler_https https://example.com
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netdb.h>
+#include <sys/stat.h>
 #include <fcntl.h>
-#include <ctype.h>
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 
-#define BUFFER_SIZE 4096
+#define BUFFER_SIZE 8192
 
-// 初始化 OpenSSL 库
-void init_openssl() {
-    SSL_load_error_strings();
-    OpenSSL_add_ssl_algorithms();
-}
-
-// 清理 OpenSSL
-void cleanup_openssl() {
-    EVP_cleanup();
-}
-
-// 从 URL 中提取主机名和路径
-void parse_url(const char *url, char *host, char *path) {
-    if (strncmp(url, "https://", 8) == 0) url += 8; // 处理 HTTPS
+void parse_url(const char *url, char *host, char *path, int *port, int *is_https) {
+    *port = 80;
+    *is_https = 0;
+    if (strncmp(url, "https://", 8) == 0) {
+        *is_https = 1;
+        *port = 443;
+        url += 8;
+    } else if (strncmp(url, "http://", 7) == 0) {
+        url += 7;
+    }
     const char *slash = strchr(url, '/');
     if (slash) {
         strncpy(host, url, slash - url);
@@ -34,156 +35,232 @@ void parse_url(const char *url, char *host, char *path) {
         strcpy(host, url);
         strcpy(path, "/");
     }
+    char *colon = strchr(host, ':');
+    if (colon) {
+        *port = atoi(colon + 1);
+        *colon = '\0';
+    }
 }
 
-// 建立 SSL 连接
-SSL* connect_to_server(const char *host) {
-    struct hostent *server = gethostbyname(host);
-    if (!server) {
-        perror("gethostbyname failed");
-        return NULL;
+int connect_host(const char *host, int port) {
+    struct hostent *he = gethostbyname(host);
+    if (!he) return -1;
+    int sock = socket(AF_INET, SOCK_STREAM, 0);
+    struct sockaddr_in addr = {0};
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(port);
+    memcpy(&addr.sin_addr, he->h_addr_list[0], he->h_length);
+    if (connect(sock, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
+        close(sock);
+        return -1;
     }
-
-    int sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd < 0) {
-        perror("socket creation failed");
-        return NULL;
-    }
-
-    struct sockaddr_in serv_addr;
-    memset(&serv_addr, 0, sizeof(serv_addr));
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_port = htons(443); // HTTPS 使用端口 443
-    if (server->h_addr_list[0] == NULL) {
-        fprintf(stderr, "No IP address found for host.\n");
-        close(sockfd);
-        return NULL;
-    }
-    memcpy(&serv_addr.sin_addr.s_addr, server->h_addr_list[0], server->h_length);
-
-    if (connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
-        perror("connect failed");
-        close(sockfd);
-        return NULL;
-    }
-
-    SSL_CTX *ctx = SSL_CTX_new(TLS_client_method());
-    if (!ctx) {
-        perror("SSL_CTX_new failed");
-        close(sockfd);
-        return NULL;
-    }
-
-    SSL *ssl = SSL_new(ctx);
-    if (!ssl) {
-        perror("SSL_new failed");
-        SSL_CTX_free(ctx);
-        close(sockfd);
-        return NULL;
-    }
-
-    SSL_set_fd(ssl, sockfd);
-    if (SSL_connect(ssl) != 1) {
-        perror("SSL_connect failed");
-        SSL_free(ssl);
-        SSL_CTX_free(ctx);
-        close(sockfd);
-        return NULL;
-    }
-
-    return ssl; // 返回 SSL 对象
+    return sock;
 }
 
-// 发送 HTTPS 请求
-void send_get_request(SSL *ssl, const char *host, const char *path) {
-    char request[BUFFER_SIZE];
-    snprintf(request, sizeof(request),
-             "GET %s HTTP/1.1\r\n"
-             "Host: %s\r\n"
-             "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-             "AppleWebKit/537.36 (KHTML, like Gecko) "
-             "Chrome/123.0.0.0 Safari/537.36\r\n"
-             "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8\r\n"
-             "Connection: close\r\n\r\n",
-             path, host);
-    SSL_write(ssl, request, strlen(request));
+void save_file(const char *fname, const char *data, size_t len) {
+    char fullpath[256];
+    sprintf(fullpath, "download/%s", fname);
+    FILE *f = fopen(fullpath, "wb");
+    if (f) {
+        fwrite(data, 1, len, f);
+        fclose(f);
+        printf("保存：%s\n", fullpath);
+    }
 }
 
-// 去除 HTML 标签，只保留文本内容（简单方式：去除 <> 中的内容）
-void strip_html_tags(const char *input, FILE *out_fp) {
-    int in_tag = 0;
-    for (; *input; input++) {
-        if (*input == '<') {
-            in_tag = 1;
-        } else if (*input == '>') {
-            in_tag = 0;
-        } else if (!in_tag) {
-            fputc(*input, out_fp);
+int ssl_send_recv(SSL *ssl, const char *req, char **out_buf, size_t *out_size) {
+    char buf[BUFFER_SIZE];
+    int header = 1, n;
+    size_t file_size = 0, cap = BUFFER_SIZE * 4;
+    char *file_data = malloc(cap);
+    SSL_write(ssl, req, strlen(req));
+    while ((n = SSL_read(ssl, buf, sizeof(buf))) > 0) {
+        if (header) {
+            char *p = strstr(buf, "\r\n\r\n");
+            if (p) {
+                size_t hlen = p + 4 - buf;
+                memcpy(file_data, buf + hlen, n - hlen);
+                file_size = n - hlen;
+                header = 0;
+            }
+        } else {
+            if (file_size + n > cap) { cap *= 2; file_data = realloc(file_data, cap); }
+            memcpy(file_data + file_size, buf, n);
+            file_size += n;
         }
     }
+    *out_buf = file_data;
+    *out_size = file_size;
+    return 0;
 }
 
-// 读取 SSL 数据直到结束并处理内容
-void save_text_only(SSL *ssl, const char *text_file) {
-    FILE *fp = fopen(text_file, "w");
-    if (!fp) {
-        perror("fopen failed");
-        return;
-    }
-    
-    char buffer[BUFFER_SIZE];
-    int total_bytes = 0;
-    int bytes_read;
-    int header_end = 0;
-    char *body_ptr = NULL;
-    
-    while (1) {
-        bytes_read = SSL_read(ssl, buffer + total_bytes, sizeof(buffer) - total_bytes - 1); // 继续读数据
-        if (bytes_read <= 0) break;  // 如果没有更多数据，退出循环
-        total_bytes += bytes_read;
-        if (total_bytes >= sizeof(buffer) - 1) break;  // 防止溢出
+void fetch_url(const char *url, int is_img) {
+    char host[128], path[256];
+    int port, is_https;
+    parse_url(url, host, path, &port, &is_https);
+    int sock = connect_host(host, port);
+    if (sock < 0) { puts("连接失败"); return; }
 
-        // 处理 HTML 内容的转换
-        buffer[total_bytes] = '\0';  // 保证 buffer 结束符
-    }
+    char req[512];
+    snprintf(req, sizeof(req),
+        "GET %s HTTP/1.0\r\nHost: %s\r\nConnection: close\r\n\r\n",
+        path, host);
 
-    // 完整数据读取完成后进行 HTML 标签去除
-    buffer[total_bytes] = '\0';  // 确保数据是一个完整的字符串
-    
-    // 跳过 HTTP 头部部分
-    if (!header_end) {
-        body_ptr = strstr(buffer, "\r\n\r\n");
-        if (body_ptr) {
-            header_end = 1;
-            body_ptr += 4;  // 跳过头部的 \r\n\r\n
-            strip_html_tags(body_ptr, fp);  // 去除 HTML 标签
+    char *file_data = NULL;
+    size_t file_size = 0;
+    if (!is_https) {
+        // HTTP 方式
+        char buf[BUFFER_SIZE];
+        int header = 1, n;
+        size_t cap = BUFFER_SIZE * 4;
+        file_data = malloc(cap);
+        send(sock, req, strlen(req), 0);
+        while ((n = recv(sock, buf, sizeof(buf), 0)) > 0) {
+            if (header) {
+                char *p = strstr(buf, "\r\n\r\n");
+                if (p) {
+                    size_t hlen = p + 4 - buf;
+                    memcpy(file_data, buf + hlen, n - hlen);
+                    file_size = n - hlen;
+                    header = 0;
+                }
+            } else {
+                if (file_size + n > cap) { cap *= 2; file_data = realloc(file_data, cap); }
+                memcpy(file_data + file_size, buf, n);
+                file_size += n;
+            }
         }
     } else {
-        strip_html_tags(buffer, fp);  // 如果头部已处理，直接处理 body 内容
+        // HTTPS 方式
+        SSL_library_init();
+        OpenSSL_add_all_algorithms();
+        SSL_load_error_strings();
+        const SSL_METHOD *method = TLS_client_method();
+        SSL_CTX *ctx = SSL_CTX_new(method);
+        SSL *ssl = SSL_new(ctx);
+        SSL_set_fd(ssl, sock);
+        if (SSL_connect(ssl) <= 0) {
+            SSL_free(ssl); SSL_CTX_free(ctx); close(sock); puts("SSL连接失败"); return;
+        }
+        ssl_send_recv(ssl, req, &file_data, &file_size);
+        SSL_shutdown(ssl); SSL_free(ssl); SSL_CTX_free(ctx);
     }
-
-    fclose(fp);
+    close(sock);
+    // 生成文件名
+    const char *fname = strrchr(path, '/');
+    if (!fname || strlen(fname) <= 1) fname = is_img ? "index.jpg" : "index.html"; else fname++;
+    save_file(fname, file_data, file_size);
+    free(file_data);
 }
 
-int main() {
-    init_openssl();
+void mkdir_download() { mkdir("download", 0755); }
 
-    const char *url = "https://baike.baidu.com/item/FBADS/1991071";  // 替换为你要爬取的 HTTPS 网站
-    char host[256], path[1024];
+void find_and_fetch_imgs(const char *html, size_t len, const char *base_url) {
+    const char *p = html;
+    while ((p = strstr(p, "<img"))) {
+        const char *src = strstr(p, "src=");
+        if (!src) break;
+        src += 4;
+        while (*src == ' ' || *src == '\'' || *src == '"') src++;
+        char img_url[512] = {0};
+        int j = 0;
+        while (*src && *src != '"' && *src != '\'' && *src != ' ' && *src != '>') {
+            img_url[j++] = *src++;
+        }
+        img_url[j] = '\0';
+        char full_url[512];
+        if (strncmp(img_url, "http://", 7) == 0 || strncmp(img_url, "https://", 8) == 0) {
+            strcpy(full_url, img_url);
+        } else if (img_url[0] == '/') {
+            char host[128], path[256]; int port, is_https;
+            parse_url(base_url, host, path, &port, &is_https);
+            sprintf(full_url, is_https ? "https://%s%s" : "http://%s%s", host, img_url);
+        } else {
+            sprintf(full_url, "%s/%s", base_url, img_url);
+        }
+        if (strstr(img_url, ".jpg") || strstr(img_url, ".png") || strstr(img_url, ".jpeg") || strstr(img_url, ".gif")) {
+            printf("图片URL: %s\n", full_url);
+            fetch_url(full_url, 1);
+        }
+        p = src;
+    }
+}
 
-    parse_url(url, host, path);
-
-    SSL *ssl = connect_to_server(host);
-    if (!ssl) {
-        cleanup_openssl();
+int main(int argc, char *argv[]) {
+    if (argc < 2) {
+        printf("用法: %s <网址>\n", argv[0]);
         return 1;
     }
-
-    send_get_request(ssl, host, path);
-    save_text_only(ssl, "output.txt");
-
-    SSL_free(ssl);
-    cleanup_openssl();
-    printf("网页文本已保存为 output.txt\n");
+    mkdir_download();
+    char host[128], path[256]; int port, is_https;
+    parse_url(argv[1], host, path, &port, &is_https);
+    int sock = connect_host(host, port);
+    if (sock < 0) { puts("连接失败"); return 1; }
+    char req[512];
+    snprintf(req, sizeof(req),
+        "GET %s HTTP/1.0\r\nHost: %s\r\nConnection: close\r\n\r\n",
+        path, host);
+    char *html = NULL;
+    size_t html_size = 0;
+    if (!is_https) {
+        // HTTP
+        char buf[BUFFER_SIZE];
+        int n, header = 1;
+        size_t cap = BUFFER_SIZE * 10;
+        html = malloc(cap);
+        send(sock, req, strlen(req), 0);
+        while ((n = recv(sock, buf, sizeof(buf), 0)) > 0) {
+            if (header) {
+                char *p = strstr(buf, "\r\n\r\n");
+                if (p) {
+                    size_t hlen = p + 4 - buf;
+                    memcpy(html, buf + hlen, n - hlen);
+                    html_size = n - hlen;
+                    header = 0;
+                }
+            } else {
+                if (html_size + n > cap) { cap *= 2; html = realloc(html, cap); }
+                memcpy(html + html_size, buf, n);
+                html_size += n;
+            }
+        }
+    } else {
+        // HTTPS
+        SSL_library_init();
+        OpenSSL_add_all_algorithms();
+        SSL_load_error_strings();
+        const SSL_METHOD *method = TLS_client_method();
+        SSL_CTX *ctx = SSL_CTX_new(method);
+        SSL *ssl = SSL_new(ctx);
+        SSL_set_fd(ssl, sock);
+        if (SSL_connect(ssl) <= 0) {
+            SSL_free(ssl); SSL_CTX_free(ctx); close(sock); puts("SSL连接失败"); return 1;
+        }
+        char buf[BUFFER_SIZE];
+        int n, header = 1;
+        size_t cap = BUFFER_SIZE * 10;
+        html = malloc(cap);
+        SSL_write(ssl, req, strlen(req));
+        while ((n = SSL_read(ssl, buf, sizeof(buf))) > 0) {
+            if (header) {
+                char *p = strstr(buf, "\r\n\r\n");
+                if (p) {
+                    size_t hlen = p + 4 - buf;
+                    memcpy(html, buf + hlen, n - hlen);
+                    html_size = n - hlen;
+                    header = 0;
+                }
+            } else {
+                if (html_size + n > cap) { cap *= 2; html = realloc(html, cap); }
+                memcpy(html + html_size, buf, n);
+                html_size += n;
+            }
+        }
+        SSL_shutdown(ssl); SSL_free(ssl); SSL_CTX_free(ctx);
+    }
+    close(sock);
+    save_file("index.html", html, html_size);
+    find_and_fetch_imgs(html, html_size, argv[1]);
+    free(html);
     return 0;
 }
