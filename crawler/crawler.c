@@ -57,9 +57,13 @@ int connect_host(const char *host, int port) {
     return sock;
 }
 
-void save_file(const char *fname, const char *data, size_t len) {
-    char fullpath[256];
-    sprintf(fullpath, "download/%s", fname);
+void save_file(const char *host, const char *fname, const char *data, size_t len) {
+    char dirpath[256];
+    sprintf(dirpath, "download/%s", host);
+    mkdir(dirpath, 0755); // 创建主机子目录
+
+    char fullpath[512];
+    sprintf(fullpath, "%s/%s", dirpath, fname);
     FILE *f = fopen(fullpath, "wb");
     if (f) {
         fwrite(data, 1, len, f);
@@ -149,7 +153,7 @@ void fetch_url(const char *url, int is_img) {
     // 生成文件名
     const char *fname = strrchr(path, '/');
     if (!fname || strlen(fname) <= 1) fname = is_img ? "index.jpg" : "index.html"; else fname++;
-    save_file(fname, file_data, file_size);
+    save_file(host, fname, file_data, file_size);
     free(file_data);
 }
 
@@ -259,7 +263,7 @@ int main(int argc, char *argv[]) {
         SSL_shutdown(ssl); SSL_free(ssl); SSL_CTX_free(ctx);
     }
     close(sock);
-    save_file("index.html", html, html_size);
+    save_file(host, "index.html", html, html_size);
     find_and_fetch_imgs(html, html_size, argv[1]);
     free(html);
     return 0;
