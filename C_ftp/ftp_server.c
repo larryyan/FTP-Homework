@@ -173,7 +173,7 @@ void handle_client(FTPClient *client) {
                     strftime(timebuf, sizeof(timebuf), "%b %d %H:%M", tm_info);
 
                     // 构造 ls -l 风格输出
-                    snprintf(line, sizeof(line), "%s %3ld %s %s %8ld %s %s\r\n",
+                    snprintf(line, sizeof(line), "%s %3ld %-10s %-10s %8ld %s %s\r\n",
                         perms,
                         (long)st.st_nlink,
                         owner,
