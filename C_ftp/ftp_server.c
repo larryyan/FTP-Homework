@@ -66,35 +66,6 @@ void authenticate(FTPClient *client, const char *username, const char *password)
     }
 }
 
-// 获取随机端口
-int get_random_port() {
-    int sockfd;
-    struct sockaddr_in addr;
-    socklen_t addrlen = sizeof(addr);
-
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd < 0) return -1;
-
-    memset(&addr, 0, sizeof(addr));
-    addr.sin_family = AF_INET;
-    addr.sin_addr.s_addr = htonl(INADDR_ANY);
-    addr.sin_port = 0; // 让系统分配端口
-
-    if (bind(sockfd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
-        close(sockfd);
-        return -1;
-    }
-
-    if (getsockname(sockfd, (struct sockaddr*)&addr, &addrlen) < 0) {
-        close(sockfd);
-        return -1;
-    }
-
-    int port = ntohs(addr.sin_port);
-    close(sockfd);
-    return port;
-}
-
 // 处理客户端命令
 void handle_client(FTPClient *client) {
     char buffer[BUFFER_SIZE];
@@ -363,22 +334,23 @@ void handle_client(FTPClient *client) {
             client->data_sock = -1;   // 重置数据连接
             // 关闭数据连接
             send_response(client->client_sock, "File transfer complete", 226);
-        } else if (strcmp(cmd.cmd, "STOR") == 0) {
+                } else if (strcmp(cmd.cmd, "STOR") == 0) {
             if (!client->logged_in) {
                 send_response(client->client_sock, "Please login first", 530);
                 continue;
             }
 
-            // 创建数据连接
             send_response(client->client_sock, "Opening data connection", 150);
 
             if (recv_file(client->data_sock, cmd.arg) < 0) {
                 send_response(client->client_sock, "File upload failed", 550);
+                close(client->data_sock);
+                client->data_sock = -1;
+                continue; // 直接跳过后续
             }
 
-            close(client->data_sock); // 关闭数据连接
-            client->data_sock = -1;   // 重置数据连接
-            // 关闭数据连接
+            close(client->data_sock);
+            client->data_sock = -1;
             send_response(client->client_sock, "File upload complete", 226);
         } else if (strcmp(cmd.cmd, "DELE") == 0) {
             if (!client->logged_in) {

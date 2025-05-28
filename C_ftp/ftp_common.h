@@ -243,4 +243,51 @@ int connect_data_channel(const char *ip, int port) {
     return data_sock;
 }
 
+
+// 获取随机端口
+int get_random_port() {
+    int sockfd;
+    struct sockaddr_in addr;
+    socklen_t addrlen = sizeof(addr);
+
+    // 先尝试默认端口
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd < 0) return -1;
+
+    memset(&addr, 0, sizeof(addr));
+    addr.sin_family = AF_INET;
+    addr.sin_addr.s_addr = htonl(INADDR_ANY);
+    addr.sin_port = htons(DATA_PORT);
+
+    if (bind(sockfd, (struct sockaddr*)&addr, sizeof(addr)) == 0) {
+        // 默认端口可用
+        close(sockfd);
+        return DATA_PORT;
+    }
+    close(sockfd);
+
+    // 默认端口被占用，随机分配
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd < 0) return -1;
+
+    memset(&addr, 0, sizeof(addr));
+    addr.sin_family = AF_INET;
+    addr.sin_addr.s_addr = htonl(INADDR_ANY);
+    addr.sin_port = 0; // 让系统分配端口
+
+    if (bind(sockfd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
+        close(sockfd);
+        return -1;
+    }
+
+    if (getsockname(sockfd, (struct sockaddr*)&addr, &addrlen) < 0) {
+        close(sockfd);
+        return -1;
+    }
+
+    int port = ntohs(addr.sin_port);
+    close(sockfd);
+    return port;
+}
+
 #endif // FTP_COMMON_H

@@ -88,7 +88,7 @@ int data_connect(int sockfd) {
         char local_ip[16];
         get_local_ip(local_ip, sizeof(local_ip));
         // 计算端口号
-        data_port = DATA_PORT;
+        data_port = get_random_port();
         int p1 = (data_port >> 8) & 0xFF;
         int p2 = data_port & 0xFF;
         int ip1, ip2, ip3, ip4;
