@@ -50,11 +50,19 @@ cd C_ftp
 ./ftp_client
 ```
 
+![image-20250528190021652](assets/image-20250528190021652.png)
+
 ### Web based FTP browser
 
 ```bash
 python3 ftp_web/ftp_client_web.py
 ```
+
+![image-20250528190106619](assets/image-20250528190106619.png)
+
+- login by your account and password
+
+![image-20250528190129700](assets/image-20250528190129700.png)
 
 ### Socket based web crawler
 
@@ -62,3 +70,9 @@ python3 ftp_web/ftp_client_web.py
 cd crawler
 ./crawler_https https://example.com
 ```
+
+![image-20250528190143889](assets/image-20250528190143889.png)
+
+![image-20250528190150785](assets/image-20250528190150785.png)
+
+- The website and images have been downloaded to the download/"domain" folder.
