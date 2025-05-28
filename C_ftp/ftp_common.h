@@ -254,6 +254,9 @@ int get_random_port() {
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0) return -1;
 
+    int opt = 1;
+    setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)); // 端口可复用
+
     memset(&addr, 0, sizeof(addr));
     addr.sin_family = AF_INET;
     addr.sin_addr.s_addr = htonl(INADDR_ANY);

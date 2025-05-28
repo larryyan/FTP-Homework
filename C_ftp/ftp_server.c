@@ -390,6 +390,9 @@ int main() {
         exit(1);
     }
 
+    int opt = 1;
+    setsockopt(server_sock, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)); // 端口可复用
+
     // 配置服务器地址结构
     memset(&server_addr, 0, sizeof(server_addr));
     server_addr.sin_family = AF_INET;

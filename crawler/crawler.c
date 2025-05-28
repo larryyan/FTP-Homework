@@ -1,6 +1,6 @@
 // 基于Socket+OpenSSL的简易HTTPS网络爬虫（抓取文本和图片，保存到download文件夹）
 // 编译：gcc -o crawler_https crawler_https.c -lssl -lcrypto
-// 运行：./crawler_https https://example.com
+// 运行：./crawler https://example.com
 
 #include <stdio.h>
 #include <stdlib.h>
