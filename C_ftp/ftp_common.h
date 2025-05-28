@@ -15,8 +15,8 @@
 // ---------------------
 // 通用常量定义
 // ---------------------
-#define COMMAND_PORT 2121       // 命令端口
-#define DATA_PORT 2020          // 默认数据端口
+#define COMMAND_PORT 2121         // 命令端口
+#define DATA_PORT 2020            // 默认数据端口
 #define BUFFER_SIZE 1024        // 缓冲区大小
 #define MAX_PATH_LEN 256        // 文件路径长度
 

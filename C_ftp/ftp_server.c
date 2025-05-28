@@ -12,6 +12,8 @@
 #include <net/if.h>
 #include <pwd.h>
 #include <grp.h>
+#include <shadow.h>
+#include <crypt.h>
 
 #include "ftp_common.h"
 
@@ -34,28 +36,29 @@ void send_response(int client_sock, const char *message, int code) {
     send(client_sock, response, strlen(response), 0);
 }
 
-// 登录验证
+// 登录验证（使用 Linux 系统用户/支持 anonymous 匿名用户）
 void authenticate(FTPClient *client, const char *username, const char *password) {
-    FILE *file = fopen("users.txt", "r");
-    if (file == NULL) {
-        send_response(client->client_sock, "Unable to open user database", 550);
+    if (strcmp(username, "anonymous") == 0) {
+        client->logged_in = 1;
+        send_response(client->client_sock, "Anonymous login ok", 230);
         return;
     }
 
-    char stored_username[MAX_PATH_LEN], stored_password[MAX_PATH_LEN];
-    int found = 0;
-
-    // 遍历文件中的每一行
-    while (fscanf(file, "%s %s", stored_username, stored_password) != EOF) {
-        if (strcmp(username, stored_username) == 0 && strcmp(password, stored_password) == 0) {
-            found = 1;
-            break;
-        }
+    struct passwd *pw = getpwnam(username);
+    if (!pw) {
+        send_response(client->client_sock, "Invalid username or password", 530);
+        return;
     }
 
-    fclose(file);
+    struct spwd *sp = getspnam(username);
+    if (!sp) {
+        send_response(client->client_sock, "Unable to access shadow file", 550);
+        return;
+    }
 
-    if (found) {
+    // 用 shadow 文件中的加密盐加密输入密码
+    char *encrypted = crypt(password, sp->sp_pwdp);
+    if (encrypted && strcmp(encrypted, sp->sp_pwdp) == 0) {
         client->logged_in = 1;
         send_response(client->client_sock, "Login successful", 230);
     } else {

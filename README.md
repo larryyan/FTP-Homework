@@ -8,7 +8,7 @@
   - A web-based FTP file browser implemented in Python language
   - A socket based web crawler in C language
   
-- Both FTP server & client should be run on a Linux operating system.
+- All FTP client/server and crawler should be run on a Linux operating system.
 
 ## Preparation
 
@@ -17,28 +17,6 @@
 ```bash
 make
 ```
-
-### Install iconv
-
-
-#### Ubuntu/Debian
-
-  ```bash
-  sudo apt-get install libc-bin
-  ```
-
-
-#### CentOS/RHEL
-
-  ```bash
-  sudo yum install glibc-common
-  ```
-
-#### MacOS
-
-  ```bash
-  brew install libiconv
-  ```
 
 ### Install required Python packages
 
@@ -62,12 +40,13 @@ sudo pacman -S python-cgi
 
 ```bash
 cd C_ftp
-./ftp_server
+sudo ./ftp_server
 ```
 
 ### FTP Client
 
 ```bash
+cd C_ftp
 ./ftp_client
 ```
 
@@ -81,6 +60,5 @@ python3 ftp_web/ftp_client_web.py
 
 ```bash
 cd crawler
-./crawler
+./crawler_https https://example.com
 ```
-
