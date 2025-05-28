@@ -86,9 +86,9 @@
 
     document.getElementById("backBtn").onclick = () => {
         if (currentPath === "." || currentPath === "") return;
-        const parts = currentPath.split("/").filter(p => p && p !== "." && p !== "..");
-        parts.pop();
-        const newPath = parts.length ? parts.join("/") : ".";
+        // 直接去掉最后一个/及其后面的部分
+        let idx = currentPath.lastIndexOf("/");
+        let newPath = idx > 0 ? currentPath.slice(0, idx) : ".";
         navigateTo(newPath);
     };
 
@@ -103,12 +103,11 @@
     }
 
     function normalizePath(path) {
-        const segments = [];
-        path.split("/").forEach(seg => {
-            if (seg === "..") segments.pop();
-            else if (seg !== "." && seg !== "") segments.push(seg);
-        });
-        return segments.length ? segments.join("/") : ".";
+        // 只做简单的多余/去除，不做..和.的处理
+        if (!path || path === "") return ".";
+        // 去除首尾多余的/
+        path = path.replace(/^\/+|\/+$/g, "");
+        return path === "" ? "." : path;
     }
 
     async function loadDirectory(path = ".") {
@@ -116,12 +115,20 @@
         document.getElementById("backBtn").style.display = (currentPath !== ".") ? "inline-block" : "none";
         document.getElementById("logoutBtn").style.display = "inline-block";
                 
-        if (!username || !password) {
+        if (!username) {
             username = prompt("请输入FTP用户名");
-            password = prompt("请输入FTP密码");
-            if (!username || !password) {
-                alert("必须输入用户名和密码！");
+            if (!username) {
+                alert("必须输入用户名！");
                 return;
+            }
+            if (username === "anonymous") {
+                password = "";
+            } else {
+                password = prompt("请输入FTP密码");
+                if (!password) {
+                    alert("必须输入密码！");
+                    return;
+                }
             }
             localStorage.setItem("ftp_user", username);
             localStorage.setItem("ftp_passwd", password);
@@ -140,10 +147,18 @@
             localStorage.removeItem("ftp_user");
             localStorage.removeItem("ftp_passwd");
             username = prompt("无权限或未登录，请输入FTP用户名");
-            password = prompt("请输入FTP密码");
-            if (!username || !password) {
-                alert("必须输入用户名和密码！");
+            if (!username) {
+                alert("必须输入用户名！");
                 return;
+            }
+            if (username === "anonymous") {
+                password = "";
+            } else {
+                password = prompt("请输入FTP密码");
+                if (!password) {
+                    alert("必须输入密码！");
+                    return;
+                }
             }
             localStorage.setItem("ftp_user", username);
             localStorage.setItem("ftp_passwd", password);
