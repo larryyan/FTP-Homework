@@ -14,7 +14,7 @@
 
 char server_ip[16];
 int cmd_port;
-int data_port = DATA_PORT; // 数据端口
+int data_port; // 数据端口
 int data_sock = -1; // 数据连接套接字
 
 int passive_mode = 0; // 被动模式
@@ -228,6 +228,9 @@ void login(int sockfd, const char *username) {
 }
 
 int main() {
+    load_ports_from_yaml("ftp_config.yaml"); // 从 YAML 文件加载端口配置
+    data_port = DATA_PORT;
+
     int sockfd;
     struct sockaddr_in server_addr;
     char input[BUFFER_SIZE];

@@ -1,6 +1,6 @@
 # FTP-Homework
 
-- This is an assignment for a computer network internship course. 
+- This is an assignment for a computer network internship course.
 
 - This project consists of the following parts:
   - FTP server Implemented in C Language
