@@ -6,3 +6,5 @@
 /ftp_web/downloads/
 /crawler/download/
 /crawler/crawler
+test.txt
+**/test.txt

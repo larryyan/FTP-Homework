@@ -9,6 +9,7 @@ This module provides a simple web-based FTP file browser implemented in Python (
 - Supports login with any FTP user, including anonymous login (no password required).
 - User-friendly interface with file size and modification time display.
 - No third-party Python dependencies required (uses standard library).
+- **Make sure you are using Python 3.6 or newer.**
 
 ## How to Run
 
