@@ -21,11 +21,12 @@ This will generate two executables: `ftp_server` (server) and `ftp_client` (clie
 
 ## Configuration
 
-Edit `ftp_config.yaml` to set the command and data ports:
+Edit `ftp_config.yaml` to set the command port, data port, and passive mode:
 
 ```yaml
 command_port: 2121
 data_port: 2020
+passive: true   # true/false or 1/0, controls whether passive mode is enabled by default
 ```
 
 ## Usage
@@ -36,7 +37,7 @@ data_port: 2020
 sudo ./ftp_server
 ```
 
-- The server reads the command and data port from `ftp_config.yaml`.
+- The server reads the command port, data port, and passive mode from `ftp_config.yaml`.
 - Supports login with Linux system users, as well as anonymous login (`anonymous` user does not require a password).
 
 ### Start the FTP Client
@@ -45,7 +46,7 @@ sudo ./ftp_server
 ./ftp_client
 ```
 
-- Supports active/passive mode selection.
+- Supports active/passive mode selection. The default mode can be set via the `passive` field in the configuration file.
 - Supported commands: `open`, `user`, `get`, `put`, `pwd`, `dir`, `cd`, `quit`, `?`, etc.
 - After connecting to the server, use `user <username>` to log in. For the `anonymous` user, you can just press Enter to skip the password.
 

@@ -17,6 +17,8 @@
 // ---------------------
 extern int COMMAND_PORT;  // 命令通道端口
 extern int DATA_PORT;     // 数据通道端口
+extern int IS_PASSIVE;    // 是否处于被动模式
+
 #define BUFFER_SIZE 1024        // 缓冲区大小
 #define MAX_PATH_LEN 256        // 文件路径长度
 
@@ -72,6 +74,6 @@ int get_random_port();
 void get_local_ip(char *ip, size_t len);
 
 // 读取配置文件
-int load_ports_from_yaml(const char *filename);
+int load_yaml(const char *filename);
 
 #endif // FTP_COMMON_H

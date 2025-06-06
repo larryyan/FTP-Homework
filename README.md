@@ -1,12 +1,17 @@
 # FTP-Homework
 
+![Platform](https://img.shields.io/badge/platform-Linux-blue)
+![Language](https://img.shields.io/badge/language-C%20%7C%20Python-blueviolet)
+![License](https://img.shields.io/badge/license-MIT-green)
+![Status](https://img.shields.io/badge/status-educational-important)
+
 - This is an assignment for a computer network internship course.
 
 - This project consists of the following parts:
-  - FTP server Implemented in C Language
-  - FTP client implemented in C language
-  - A web-based FTP file browser implemented in Python language
-  - A socket based web crawler in C language
+  - FTP server implemented in C language ([details here](C_ftp/README.md))
+  - FTP client implemented in C language ([details here](C_ftp/README.md))
+  - A web-based FTP file browser implemented in Python ([details here](ftp_web/README.md))
+  - A socket-based web crawler in C language ([details here](crawler/README.md))
   
 - All FTP client/server and crawler should be run on a Linux operating system.
 
@@ -50,6 +55,8 @@ cd C_ftp
 ./ftp_client
 ```
 
+![image-20250606112255811](assets/image-20250606112255811.png)
+
 ![image-20250528190021652](assets/image-20250528190021652.png)
 
 ### Web based FTP browser
@@ -76,3 +83,15 @@ cd crawler
 ![image-20250528190150785](assets/image-20250528190150785.png)
 
 - The website and images have been downloaded to the download/"domain" folder.
+
+---
+
+## More Details
+
+- [C FTP server/client details](C_ftp/README.md)
+- [Web-based FTP browser details](ftp_web/README.md)
+- [Socket-based web crawler details](crawler/README.md)
+
+---
+
+[License (MIT)](LICENSE)

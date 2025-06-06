@@ -379,7 +379,7 @@ void handle_client_process(int client_sock) {
 }
 
 int main() {
-    load_ports_from_yaml("ftp_config.yaml"); // 从 YAML 文件加载端口配置
+    load_yaml("ftp_config.yaml"); // 从 YAML 文件加载端口配置
 
     int server_sock, client_sock;
     struct sockaddr_in server_addr, client_addr;

@@ -2,6 +2,7 @@
 
 int COMMAND_PORT = 21;  // 默认命令端口
 int DATA_PORT = 20;     // 默认数据端口
+int IS_PASSIVE = 1;     // 默认被动模式
 
 // 去掉字符串末尾的换行符
 void trim_newline(char *str) {
@@ -229,7 +230,7 @@ int get_random_port() {
     return port;
 }
 
-int load_ports_from_yaml(const char *filename) {
+int load_yaml(const char *filename) {
     FILE *fh = fopen(filename, "r");
     if (!fh) return -1;
 
@@ -249,11 +250,19 @@ int load_ports_from_yaml(const char *filename) {
         if (token.type == YAML_SCALAR_TOKEN) {
             if (state == 0) {
                 strncpy(key, (char *)token.data.scalar.value, sizeof(key)-1);
+                key[sizeof(key)-1] = '\0';
             } else {
                 if (strcmp(key, "command_port") == 0)
                     COMMAND_PORT = atoi((char *)token.data.scalar.value);
                 else if (strcmp(key, "data_port") == 0)
                     DATA_PORT = atoi((char *)token.data.scalar.value);
+                else if (strcmp(key, "passive") == 0) {
+                    char *val = (char *)token.data.scalar.value;
+                    if (strcasecmp(val, "true") == 0 || strcmp(val, "1") == 0)
+                        IS_PASSIVE = 1;
+                    else
+                        IS_PASSIVE = 0;
+                }
             }
         }
         yaml_token_delete(&token);
