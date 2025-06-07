@@ -29,14 +29,14 @@ make
 
 ```bash
 sudo apt install python-requests
-sudo apt install python-cgi
+sudo apt install python-flask
 ```
 
 #### Arch Linux
 
 ```bash
 sudo pacman -S python-requests
-sudo pacman -S python-cgi
+sudo pacman -S python-flask
 ```
 
 ## Run
@@ -62,7 +62,8 @@ cd C_ftp
 ### Web based FTP browser
 
 ```bash
-python3 ftp_web/ftp_client_web.py
+cd ftp_web
+python3 app.py
 ```
 
 ![image-20250528190106619](assets/image-20250528190106619.png)
