@@ -62,7 +62,8 @@ cd C_ftp
 ### Web based FTP browser
 
 ```bash
-python3 ftp_web/ftp_client_web.py
+cd ftp_web
+python3 app.py
 ```
 
 ![image-20250528190106619](assets/image-20250528190106619.png)
