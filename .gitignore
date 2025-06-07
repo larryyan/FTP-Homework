@@ -8,3 +8,4 @@
 /crawler/crawler
 test.txt
 **/test.txt
+**/__pycache__/

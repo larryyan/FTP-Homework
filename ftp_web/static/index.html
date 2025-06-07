@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <title>Web FTP 浏览器</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="header-container">
+    <h2>Web FTP 文件浏览器</h2>
+    <button id="logoutBtn" style="display:none;" onclick="logout()">退出登录</button>
+</div>
+
+<div class="action-bar">
+    <div id="uploadSection" style="display: flex; flex-direction: row; gap: 16px; align-items: center; padding: 0; border: none; background: none;">
+        <!-- 上传文件 -->
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <input type="file" id="upload" style="display:none;" />
+            <button type="button" class="green-btn" id="uploadBtn">上传文件</button>
+        </div>
+    </div>
+    <div id="newFolderSection">
+        <form id="newFolderForm" style="display: flex; align-items: center; gap: 8px;">
+            <input type="text" id="newFolderName" placeholder="新建文件夹名" autocomplete="off" />
+            <button type="submit" class="green-btn">新建文件夹</button>
+        </form>
+    </div>
+    <button id="reloadBtn" onclick="reloadDirectory()">刷新</button>
+</div>
+
+<span id="backBtn" style="display:none;">⬅️ 返回上级目录</span>
+
+<table>
+    <thead>
+        <tr>
+            <th style="width:55%">文件名</th>
+            <th style="width:20%">大小</th>
+            <th style="width:25%">修改时间</th>
+            <th style="width:15%">操作</th>
+        </tr>
+    </thead>
+    <tbody id="filelist">
+        <tr><td colspan="4" style="text-align:center;">正在加载...</td></tr>
+    </tbody>
+</table>
+
+<script src="main.js"></script>
+<script src="ftp-actions.js"></script>
+<script src="dom-events.js"></script>
+
+</body>
+</html>

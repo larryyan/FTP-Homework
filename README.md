@@ -29,14 +29,14 @@ make
 
 ```bash
 sudo apt install python-requests
-sudo apt install python-cgi
+sudo apt install python-flask
 ```
 
 #### Arch Linux
 
 ```bash
 sudo pacman -S python-requests
-sudo pacman -S python-cgi
+sudo pacman -S python-flask
 ```
 
 ## Run
